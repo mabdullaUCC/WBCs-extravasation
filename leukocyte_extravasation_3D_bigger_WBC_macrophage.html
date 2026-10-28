@@ -1,0 +1,86 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Leukocyte Extravasation — Interactive Physiology</title><style>body{margin:0;background:#091426;color:#eaf3ff;font-family:Arial,sans-serif}main{max-width:1250px;margin:auto;padding:20px}h1{margin:0;font-size:28px}p{color:#b9cbe3}.panel{background:#13233b;border:1px solid #314966;border-radius:15px;padding:15px;margin-top:15px}canvas{width:100%;height:auto;display:block;border-radius:12px;background:#f4e6e9}.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}button{border:1px solid #54749b;background:#203d60;color:white;padding:11px 15px;border-radius:9px;cursor:pointer;font-weight:bold}button.active{background:#0b8caa;border-color:#5ce5f2}input{accent-color:#40d5e8}.stages{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin-top:12px}.stages button{font-size:12px;padding:10px 4px}.detail{font-size:16px;line-height:1.5;min-height:55px}strong{color:#83e7f1}.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:#c9d9ec}.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px}@media(max-width:700px){.stages{grid-template-columns:repeat(3,1fr)}h1{font-size:22px}}</style></head><body><main><h1>Leukocyte Extravasation 3D <span style="color:#60d9eb">| Interactive Simulation</span></h1><p>3D-inspired animated model with rolling and amoeboid cell deformation • From circulating leukocyte to tissue recruitment • Selectins, chemokines, integrins and diapedesis</p><section class="panel"><canvas id="scene" width="1200" height="610" aria-label="Animated leukocyte extravasation"></canvas><div class="stages" id="stages"></div></section><section class="panel"><div class="controls"><button id="play">⏸ Pause</button><button id="restart">↺ Restart</button><button id="auto" class="active">Auto progression</button><label>Speed <input id="speed" type="range" min="0.25" max="2.5" step="0.05" value="1"></label><span id="speedValue">1.00×</span><label>Progress <input id="seek" type="range" min="0" max="100" step="0.1" value="0" style="width:210px"></label></div><div class="detail" id="detail"></div><div class="legend"><span><i class="dot" style="background:#9e4ce3"></i>Leukocyte</span><span><i class="dot" style="background:#d7445b"></i>Erythrocytes</span><span><i class="dot" style="background:#f3bc28"></i>Chemokines</span><span><i class="dot" style="background:#17b0b3"></i>Integrins / ICAM-1</span><span><i class="dot" style="background:#e58a37"></i>Selectins</span></div></section></main><script>
+const canvas=document.getElementById('scene'),c=canvas.getContext('2d');const names=['Margination','Rolling','Activation','Firm adhesion','Diapedesis','Chemotaxis'];const descriptions=['Inflammation and slower local flow promote leukocyte margination towards the endothelial surface.','Endothelial E/P-selectins repeatedly bind and release leukocyte carbohydrate ligands, causing the cell to rotate and roll along the vessel wall.','Endothelial-presented chemokines activate leukocyte GPCRs and trigger inside-out integrin signalling.','High-affinity leukocyte integrins (LFA-1/Mac-1) bind endothelial ICAM-1, arresting the cell.','The leukocyte extends pseudopodia, deforms its membrane and nucleus, and squeezes through an endothelial junction (paracellular diapedesis; PECAM-1 and other junctional molecules participate).','The leukocyte migrates along a tissue chemokine gradient towards microbes and activated macrophages.'];let progress=0,playing=true,auto=true,speed=1,last=0,chemTime=0;const stageDiv=document.getElementById('stages');names.forEach((n,i)=>{let b=document.createElement('button');b.textContent=(i+1)+'. '+n;b.onclick=()=>{progress=i*100/6;auto=false;document.getElementById('auto').classList.remove('active');update()};stageDiv.appendChild(b)});const buttons=[...stageDiv.children];function update(){let i=Math.min(5,Math.floor(progress/100*6));buttons.forEach((b,j)=>b.classList.toggle('active',i===j));document.getElementById('detail').innerHTML='<strong>Stage '+(i+1)+': '+names[i]+'</strong> — '+descriptions[i];document.getElementById('seek').value=progress.toFixed(1)}document.getElementById('play').onclick=()=>{playing=!playing;document.getElementById('play').textContent=playing?'⏸ Pause':'▶ Play'};document.getElementById('restart').onclick=()=>{progress=0;playing=true;document.getElementById('play').textContent='⏸ Pause';update()};document.getElementById('auto').onclick=()=>{auto=!auto;document.getElementById('auto').classList.toggle('active',auto)};document.getElementById('speed').oninput=e=>{speed=+e.target.value;document.getElementById('speedValue').textContent=speed.toFixed(2)+'×'};document.getElementById('seek').oninput=e=>{progress=+e.target.value;update()};function ellipse(x,y,rx,ry,fill,stroke){c.save();c.shadowColor='rgba(37,32,76,.22)';c.shadowBlur=7;c.shadowOffsetY=3;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fillStyle=fill;c.fill();c.shadowBlur=0;c.shadowOffsetY=0;if(stroke){c.strokeStyle=stroke;c.lineWidth=2;c.stroke()}c.restore()}
+function sphere(x,y,r,colors){let g=c.createRadialGradient(x-r*.35,y-r*.4,1,x,y,r);g.addColorStop(0,colors[0]);g.addColorStop(.52,colors[1]);g.addColorStop(1,colors[2]);ellipse(x,y,r,r,g)}
+function line(x,y,X,Y,color,w=2){c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.strokeStyle=color;c.lineWidth=w;c.stroke()}
+function txt(t,x,y,size=17,color='#263449',bold=false){c.fillStyle=color;c.font=(bold?'bold ':'')+size+'px Arial';c.fillText(t,x,y)}
+function leuk(x,y,scale=1,flatten=1,angle=0){c.save();c.translate(x,y);c.scale(scale*1.17,scale*flatten*1.17);c.rotate(angle);c.shadowColor='#6236a1';c.shadowBlur=20;let g=c.createRadialGradient(-16,-18,2,0,0,43);g.addColorStop(0,'#f8e5ff');g.addColorStop(.42,'#d3a6ed');g.addColorStop(.8,'#a26dd0');g.addColorStop(1,'#70439f');ellipse(0,0,39,35,g,'#7847ad');c.shadowBlur=0;for(let k=0;k<15;k++){let a=k*Math.PI*2/15;let x=Math.cos(a)*35,y=Math.sin(a)*32;line(x,y,x+Math.cos(a)*9,y+Math.sin(a)*9,'#b58ad7',3);sphere(x+Math.cos(a)*9,y+Math.sin(a)*9,2.7,['#eee3ff','#af7fdb','#7b4caa'])}sphere(-11,-3,16,['#c59bed','#7946b2','#49247b']);sphere(9,8,15,['#bd94e6','#7e4bb2','#4c267c']);sphere(8,-12,12,['#c49be8','#7e4bb2','#502a80']);sphere(24,-20,7,['#ffffff','#ffcf60','#d57b21']);c.restore()}
+
+function amoeboid(x,y,q,t){
+ c.save();c.translate(x,y);c.scale(1.17,1.17);let squeeze=Math.sin(Math.PI*Math.min(1,q));let rx=37-19*squeeze,ry=35+36*squeeze;
+ // Deforming membrane with a forward pseudopod and trailing uropod
+ c.shadowColor='rgba(87,45,133,.5)';c.shadowBlur=17;
+ let g=c.createRadialGradient(-10,-20,2,0,0,76);g.addColorStop(0,'#f9e9ff');g.addColorStop(.42,'#cba0ed');g.addColorStop(1,'#7443a7');
+ c.beginPath();for(let i=0;i<=80;i++){let a=i*Math.PI*2/80;let bulge=(Math.sin(3*a+t*.002)*2+Math.cos(5*a-t*.0016)*2)*(0.35+0.65*squeeze);let px=(rx+bulge)*Math.cos(a),py=(ry+bulge)*Math.sin(a);if(a>0.3&&a<2.6)py+=8*squeeze*Math.sin((a-.3)/2.3*Math.PI);if(i===0)c.moveTo(px,py);else c.lineTo(px,py)}c.closePath();c.fillStyle=g;c.fill();c.strokeStyle='#7847ad';c.lineWidth=2.5;c.stroke();c.shadowBlur=0;
+ // Nuclear lobes deform and align in the narrow junction
+ c.save();c.scale(1-.28*squeeze,1+.3*squeeze);sphere(-7,-9,12,['#c49bed','#7b48b0','#452075']);sphere(7,6,12,['#c49bed','#7944ac','#452075']);sphere(3,-13,9,['#c49bed','#7944ac','#452075']);c.restore();
+ // Leading pseudopodia and trailing processes
+ c.strokeStyle='#9a65c6';c.lineCap='round';c.lineWidth=5;
+ for(let k=-1;k<=1;k++){let xx=k*rx*.55;c.beginPath();c.moveTo(xx,ry*.8);c.quadraticCurveTo(xx+7*Math.sin(t*.002+k),ry+10,xx+10*Math.sin(t*.002+k)+k*5,ry+17+14*squeeze);c.stroke()}
+ c.restore();}
+function rbc(x,y){c.save();c.translate(x,y);c.rotate(-.18);let g=c.createRadialGradient(-8,-8,1,0,0,31);g.addColorStop(0,'#ffb6bd');g.addColorStop(.45,'#f2697a');g.addColorStop(1,'#991e41');ellipse(0,0,29,18,g,'#9e2948');ellipse(1,1,13.4,6.8,'#b63c55');c.restore()}
+function molecule(x,y,col){c.save();c.shadowColor=col;c.shadowBlur=4;line(x,y,x,y-15,col,3);line(x,y-15,x-6,y-22,col,3);line(x,y-15,x+6,y-22,col,3);c.restore()}
+function draw(t){let w=1200,h=610;c.clearRect(0,0,w,h);let g=c.createLinearGradient(0,0,0,610);g.addColorStop(0,'#f4dce8');g.addColorStop(.47,'#ffe7ed');g.addColorStop(.55,'#e9f4fa');g.addColorStop(1,'#c5e1f1');c.fillStyle=g;c.fillRect(0,0,w,h);
+// Perspective vessel walls with soft volume and specular reflection
+let lumen=c.createLinearGradient(0,0,0,325);lumen.addColorStop(0,'#c77c9a');lumen.addColorStop(.14,'#f7c4d3');lumen.addColorStop(.48,'#ffedf1');lumen.addColorStop(.88,'#f9ceda');lumen.addColorStop(1,'#bd6d8c');c.fillStyle=lumen;c.fillRect(0,0,1200,315);
+c.fillStyle='rgba(255,255,255,.25)';c.beginPath();c.ellipse(590,72,550,60,-.04,0,Math.PI*2);c.fill();
+let wall=c.createLinearGradient(0,307,0,367);wall.addColorStop(0,'#9c526f');wall.addColorStop(.16,'#f9b7c5');wall.addColorStop(.47,'#f7d5d9');wall.addColorStop(.8,'#bd7991');wall.addColorStop(1,'#85556e');c.fillStyle=wall;c.fillRect(0,308,1200,55);
+// Continuous endothelial monolayer: individual flattened cells, each with cytoplasm,
+// lateral borders and an elongated nucleus. No pre-existing hole in the wall.
+let junctionPhase=progress/100*6;
+let qj=Math.max(0,Math.min(1,junctionPhase-4));
+let opening=(junctionPhase>=4&&junctionPhase<5)?Math.pow(Math.sin(Math.PI*qj),1.3)*13:0;
+const boundaries=[0,125,250,375,500,625,740,855,980,1100,1200];
+for(let i=0;i<boundaries.length-1;i++){
+ let L=boundaries[i],R=boundaries[i+1];
+ // Only the two cells sharing the transmigration junction deform.
+ let leftCell=i===5,rightCell=i===6;
+ let edgeTopL=L,edgeTopR=R;
+ let edgeBottomL=rightCell?L+opening:L;
+ let edgeBottomR=leftCell?R-opening:R;
+ let shade=c.createLinearGradient(0,309,0,365);
+ shade.addColorStop(0,i%2?'#fce0e5':'#f9d4df');
+ shade.addColorStop(.48,i%2?'#e9abc1':'#e5a2ba');
+ shade.addColorStop(1,i%2?'#c67d9f':'#c07a9b');
+ c.beginPath();c.moveTo(edgeTopL,310);c.lineTo(edgeTopR,310);
+ c.bezierCurveTo(edgeTopR+(leftCell?-opening*.4:0),330,edgeBottomR,344,edgeBottomR,363);
+ c.lineTo(edgeBottomL,363);
+ c.bezierCurveTo(edgeBottomL,344,edgeTopL+(rightCell?opening*.4:0),330,edgeTopL,310);
+ c.closePath();c.fillStyle=shade;c.fill();c.strokeStyle='#ad6787';c.lineWidth=1.7;c.stroke();
+ // Each cell's flattened, ellipsoid endothelial nucleus.
+ let nx=(L+R)/2,ny=335;
+ let ng=c.createRadialGradient(nx-5,ny-3,1,nx,ny,18);
+ ng.addColorStop(0,'#c69bbd');ng.addColorStop(1,'#84567e');
+ c.beginPath();c.ellipse(nx,ny,17,7,0,0,Math.PI*2);c.fillStyle=ng;c.fill();
+ c.beginPath();c.ellipse(nx-4,ny-2,5,2,0,0,Math.PI*2);c.fillStyle='rgba(255,255,255,.35)';c.fill();
+}
+// Junction seam is visible and becomes a narrow, transient cleft during diapedesis.
+c.beginPath();c.moveTo(740,310);c.bezierCurveTo(740-opening*.35,330,740-opening,347,740-opening,363);
+c.moveTo(740,310);c.bezierCurveTo(740+opening*.35,330,740+opening,347,740+opening,363);
+c.strokeStyle='#965475';c.lineWidth=2.3;c.stroke();
+// Continuous basement membrane beneath the endothelial cells.
+c.beginPath();c.moveTo(0,366);c.lineTo(1200,366);c.strokeStyle='#9c789e';c.lineWidth=5;c.stroke();
+c.beginPath();c.moveTo(0,370);c.lineTo(1200,370);c.strokeStyle='rgba(255,255,255,.55)';c.lineWidth=2;c.stroke();
+txt('BLOOD VESSEL LUMEN',26,34,17,'#9b4058',true);txt('INFLAMED TISSUE',26,382,17,'#3d6685',true);txt('Blood flow  →',990,34,18,'#a44159',true);let phase=progress/100*6;for(let i=0;i<9;i++){let x=((i*160+t*.055*speed)%1430)-80;let y=72+(i%3)*65;rbc(x,y)}for(let i=0;i<18;i++){let x=30+i*66;let col=i%2?'#e58a37':'#159fa9';molecule(x,313,col)}// Molecular identification: arrows terminate on actual membrane receptor glyphs.
+function receptorArrow(label,x,y,tx,ty,color){
+ c.save();c.lineWidth=3;c.strokeStyle=color;c.fillStyle=color;
+ c.beginPath();c.moveTo(x+7,y+8);c.quadraticCurveTo((x+tx)/2,y+33,tx,ty-23);c.stroke();
+ let a=Math.atan2(ty-23-(y+33),tx-(x+tx)/2);
+ c.beginPath();c.moveTo(tx,ty-23);c.lineTo(tx-12*Math.cos(a-.43),ty-23-12*Math.sin(a-.43));c.lineTo(tx-12*Math.cos(a+.43),ty-23-12*Math.sin(a+.43));c.closePath();c.fill();
+ c.font='bold 20px Arial';let ww=c.measureText(label).width;
+ c.fillStyle='rgba(255,255,255,.92)';c.strokeStyle=color;c.lineWidth=1.4;c.beginPath();c.roundRect(x-8,y-24,ww+18,35,8);c.fill();c.stroke();c.fillStyle=color;c.fillText(label,x,y);c.restore();
+}
+receptorArrow('SELECTIN',115,440,162,313,'#b86616');
+receptorArrow('ICAM-1',300,447,294,313,'#087e83');
+// Chemokines rise from inflamed tissue, cross the endothelial layer,
+// and become displayed at the luminal endothelial surface.
+for(let i=0;i<36;i++){
+ let x=420+(i*47)%750 + Math.sin(chemTime*.0017+i*2.7)*9;
+ let offset=(i*37)%315;
+ let y=590-((chemTime*.045+offset)%315);
+ let r=4.5+(i%3)*.45;
+ c.save();c.globalAlpha=y<310?.82:1;
+ sphere(x,y,r,['#fff3a0','#f5c432','#ad7a0d']);
+ c.restore();
+}
+for(let i=0;i<16;i++){let x=480+i*43;line(x,370,x+12,360,'#e1b9c4',2)}let cx,cy,s=1,flat=1,angle=0;if(phase<1){cx=140+phase*110;cy=155+phase*110}else if(phase<2){let q=phase-1;cx=250+q*190;cy=265+Math.sin(q*12)*5;angle=q*190/37}else if(phase<3){let q=phase-2;cx=440+q*110;cy=269}else if(phase<4){let q=phase-3;cx=550+q*140;cy=269;flat=1-q*.28}else if(phase<5){let q=phase-4;cx=740+Math.sin(q*Math.PI)*3;cy=275+q*158;flat=1}else{let q=phase-5;cx=740+q*265;cy=433+q*87}if(phase>=4&&phase<5)amoeboid(cx,cy,phase-4,t);else if(phase>=5)amoeboid(cx,cy,0.1,t);else leuk(cx,cy,s,flat,angle);if(phase>=2&&phase<4){for(let i=0;i<7;i++){molecule(cx-25+i*8,cy+31,'#159fa9')}receptorArrow('INTEGRIN',Math.min(910,cx+85),185,cx+12,cy+30,'#087e83')}if(phase>=4){c.save();c.strokeStyle='#d99ba9';c.lineWidth=5;for(let i=0;i<8;i++){c.beginPath();c.moveTo(860+i*35,475);c.bezierCurveTo(820+i*42,520,900+i*28,550,840+i*44,605);c.stroke()}c.restore()}sphere(1050,555,48,['#d6f8a6','#77b86b','#36744b']);sphere(1041,550,17,['#a5e6a1','#438c61','#22553f']);sphere(1065,563,14,['#a5e6a1','#438c61','#22553f']);txt('Activated macrophage',935,606,16,'#335b51',true);txt('Chemokine gradient',520,590,16,'#a17a13',true);if(phase<5){txt('Endothelial selectins + ICAM-1',660,300,16,'#754d5a',true)}if(phase>=4&&phase<5){txt('Junctional transmigration',780,405,17,'#674c89',true)}let i=Math.min(5,Math.floor(phase));c.fillStyle='rgba(14,34,58,.89)';c.fillRect(18,52,395,47);txt((i+1)+' / 6   '+names[i].toUpperCase(),32,82,20,'#ffffff',true);if(playing){chemTime+=Math.min(60,Math.max(0,t-last||16))*speed;progress+=((auto?100/30:100/45)*Math.min(.06,(t-last)/1000||.016))*speed;if(progress>=100)progress=auto?0:100;update()}last=t;requestAnimationFrame(draw)}update();requestAnimationFrame(draw);
+</script></body></html>
